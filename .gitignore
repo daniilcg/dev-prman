@@ -23,3 +23,6 @@ install_manifest.txt
 *_Test_Jeffs
 SimpleAbcViewer
 abcview
+
+# editor settings
+.vscode/

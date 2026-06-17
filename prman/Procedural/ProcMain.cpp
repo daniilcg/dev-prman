@@ -35,7 +35,17 @@
 //-*****************************************************************************
 #include <iostream>
 #include <set>
-#include <ri.h>
+
+#if defined(__has_include) && __has_include(<ri.h>)
+# include <ri.h>
+#else
+typedef void * RtPointer;
+typedef const char * RtString;
+typedef void RtVoid;
+typedef float RtFloat;
+# define RiAttributeBegin() ((void)0)
+# define RiAttributeEnd() ((void)0)
+#endif
 
 #include <Alembic/AbcGeom/All.h>
 #include <Alembic/AbcCoreHDF5/All.h>
