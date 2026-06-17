@@ -38,6 +38,10 @@ IF( ${MAYA_FOUND} )
 
 ADD_SUBDIRECTORY( AbcExport )
 ADD_SUBDIRECTORY( AbcImport )
+ADD_SUBDIRECTORY( PRManTest )
+
+# Install the Maya Python RenderMan helper plugin script
+INSTALL(FILES PRManPlugin.py DESTINATION maya/plug-ins)
 
 ENDIF()
 
