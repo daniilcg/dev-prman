@@ -25,16 +25,40 @@ MStatus PRManTestCmd::doIt(const MArgList& args)
 {
     MGlobal::displayInfo("PRManTest command running.");
 
+    // Parse command arguments
+    bool verbose = false;
+    if (args.length() > 0) {
+        MString arg = args.asString(0);
+        if (arg == "-verbose" || arg == "-v") {
+            verbose = true;
+        }
+    }
+
 #ifdef USE_PRMAN
     if (RiIsActive()) {
         MGlobal::displayInfo("RenderMan is already active.");
-    } else {
-        RiBegin("mayaPRManTest");
-        RiOption("render", "searchpath:shader", "shader" PATH_SEPARATOR "./shaders");
-        RiDisplay("output.exr", "rgba", "string", RI_NULL);
-        RiEnd();
-        MGlobal::displayInfo("RenderMan initialization completed.");
+        return MS::kSuccess;
     }
+
+    if (verbose) {
+        MGlobal::displayInfo("Initializing RenderMan context...");
+    }
+
+    // Build shader search path
+    const char* shader_base = "shader";
+    const char* shader_path_suffix = "./shaders";
+    const size_t total_len = strlen(shader_base) + strlen(PATH_SEPARATOR) + strlen(shader_path_suffix) + 1;
+    char* shader_path = new char[total_len];
+    sprintf(shader_path, "%s%s%s", shader_base, PATH_SEPARATOR, shader_path_suffix);
+
+    RiBegin("mayaPRManTest");
+    RiOption("render", "searchpath:shader", shader_path);
+    RiDisplay("output.exr", "rgba", "string", RI_NULL);
+    RiEnd();
+
+    delete[] shader_path;
+
+    MGlobal::displayInfo("RenderMan initialization completed.");
 #else
     MGlobal::displayWarning("PRMan support is not enabled in this build.");
 #endif

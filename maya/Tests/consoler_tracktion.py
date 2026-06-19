@@ -1,3 +1,13 @@
+"""Alembic Maya-RenderMan integration test and utility module.
+
+This module provides helper functions for testing Maya and RenderMan integration,
+including scene creation, camera setup, and RenderMan initialization.
+
+Usage:
+    python consoler_tracktion.py
+"""
+
+import logging
 import os
 
 try:
@@ -17,13 +27,26 @@ except ImportError:
     prman = None
     prman_rmanGettr = None
 
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
+
 
 def ensure_maya_available():
+    """Verify that Maya Python API is available.
+
+    Raises:
+        RuntimeError: If Maya API is not loaded.
+    """
     if MayaCmds is None:
         raise RuntimeError("Maya Python API is not available in this environment.")
 
 
 def createCamera():
+    """Create a default test camera with RenderMan-friendly settings.
+
+    Returns:
+        tuple: Camera transform and shape node names.
+    """
     ensure_maya_available()
     name = MayaCmds.camera()
     MayaCmds.setAttr(name[1] + '.horizontalFilmAperture', 0.962)
@@ -31,6 +54,7 @@ def createCamera():
     MayaCmds.setAttr(name[1] + '.focalLength', 50)
     MayaCmds.setAttr(name[1] + '.focusDistance', 3)
     MayaCmds.setAttr(name[1] + '.shutterAngle', 100)
+    LOGGER.info("Camera created: %s", name[0])
     return name
 
 
@@ -188,22 +212,36 @@ def createRenderViewManager():
     return MayaCmds.shadingNode('renderViewManager', asUtility=True)
 
 
-def configure_render_globals():
+def configure_render_globals(start_frame=1, end_frame=10):
+    """Configure Maya render global settings.
+
+    Args:
+        start_frame (int): Animation start frame. Defaults to 1.
+        end_frame (int): Animation end frame. Defaults to 10.
+    """
     ensure_maya_available()
     MayaCmds.setAttr('defaultRenderGlobals.imageFormat', 8)
     MayaCmds.setAttr('defaultRenderGlobals.animation', 1)
-    MayaCmds.setAttr('defaultRenderGlobals.startFrame', 1)
-    MayaCmds.setAttr('defaultRenderGlobals.endFrame', 10)
+    MayaCmds.setAttr('defaultRenderGlobals.startFrame', start_frame)
+    MayaCmds.setAttr('defaultRenderGlobals.endFrame', end_frame)
     MayaCmds.setAttr('defaultRenderGlobals.byFrameStep', 1)
     MayaCmds.setAttr('defaultRenderGlobals.outFormatControl', 0)
     MayaCmds.setAttr('defaultRenderGlobals.putFrameBeforeExt', 1)
     MayaCmds.setAttr('defaultRenderGlobals.extensionPadding', 4)
     MayaCmds.setAttr('defaultRenderGlobals.periodInExt', 1)
+    LOGGER.info("Render globals configured: frames %d-%d", start_frame, end_frame)
 
 
 def list_all_nodes():
+    """List all DAG nodes in the scene.
+
+    Returns:
+        list: Names of all DAG nodes.
+    """
     ensure_maya_available()
-    return MayaCmds.ls(dag=True, long=True)
+    nodes = MayaCmds.ls(dag=True, long=True)
+    LOGGER.debug("Listed %d DAG nodes", len(nodes))
+    return nodes
 
 
 def is_prman_available():
@@ -283,30 +321,40 @@ def initialize_maya_standalone():
 
 
 def print_environment_status():
-    print('Maya API available:', is_running_in_maya())
-    print('RenderMan API available:', is_prman_available())
-    if is_running_in_maya():
-        print('Maya version: %s' % MayaCmds.about(version=True))
-    if is_prman_available():
-        if hasattr(prman, '__version__'):
-            print('RenderMan version:', prman.__version__)
+    """Log environment status for Maya and RenderMan APIs."""
+    maya_avail = is_running_in_maya()
+    prman_avail = is_prman_available()
+
+    LOGGER.info('Maya API available: %s', maya_avail)
+    LOGGER.info('RenderMan API available: %s', prman_avail)
+    if maya_avail:
+        LOGGER.info('Maya version: %s', MayaCmds.about(version=True))
+    if prman_avail and hasattr(prman, '__version__'):
+        LOGGER.info('RenderMan version: %s', prman.__version__)
 
 
 def main():
-    print('Running Maya tests...')
+    """Main entry point for module testing and initialization."""
+    LOGGER.info('Running Alembic Maya-RenderMan integration tests...')
     print_environment_status()
+
     if is_running_in_maya():
-        configure_render_globals()
-        nodes = list_all_nodes()
-        print('Found %d DAG nodes.' % len(nodes))
+        try:
+            configure_render_globals(start_frame=1, end_frame=10)
+            nodes = list_all_nodes()
+            LOGGER.info('Found %d DAG nodes in scene.', len(nodes))
+        except Exception as exc:
+            LOGGER.error('Maya setup failed', exc_info=True)
+
     if is_prman_available():
         try:
             get_rman_gettr()
-            print('RenderMan getter is available.')
+            LOGGER.info('RenderMan getter is available.')
         except RuntimeError as exc:
-            print('RenderMan helper error:', exc)
+            LOGGER.warning('RenderMan helper error: %s', exc)
+
     if not is_running_in_maya() and not is_prman_available():
-        print('Neither Maya nor RenderMan APIs are available. Run this module in a supported environment.')
+        LOGGER.error('Neither Maya nor RenderMan APIs are available. Run this module in a supported environment.')
 
 
 if __name__ == '__main__':
